@@ -137,9 +137,10 @@ int main(int argc , char *argv[]){
             int sent;
 
 
+
             while (1)
             {
-
+                
                 client_msg_size = recvfrom(utils_socket, (char *)client_buffer, RCVSIZE, MSG_WAITALL, (struct sockaddr *) &client_addr, &len);
                 client_buffer[client_msg_size] = '\0';
                 printf("Sever Received %d \n", client_msg_size);
@@ -152,9 +153,6 @@ int main(int argc , char *argv[]){
                 int seq = 1;
                 while(!feof(fp))
                 {
-                    //FD_SET(utils_socket,&set);
-                    t.tv_sec= 5;
-                    t.tv_usec = 0;
                     //int i = 0;
                     sprintf(client_buffer, "%06d", seq);
                     read = fread(buffer,1, RCVSIZE-6,fp);
@@ -165,45 +163,48 @@ int main(int argc , char *argv[]){
                     if(sent < 0){
                         perror("Sent Error");
                     }     
-                    memset(client_buffer, 0, sizeof(client_buffer));
-                    client_msg_size = recvfrom(utils_socket, client_buffer, read+6, MSG_WAITALL, (struct sockaddr *) &client_addr, &len);
-                    client_buffer[client_msg_size] = '\0';
-                    printf("Client : %d\n", client_msg_size);
-                    memset(client_buffer, 0, sizeof(client_buffer));
-
-                    /*s = select(utils_socket+1, &set, NULL, NULL, &t);
-                    if(FD_ISSET(utils_socket,&set)){
-
-                    }else{
-                        //sent = sendto(utils_socket,(char *) client_buffer,read+6,MSG_CONFIRM,(struct sockaddr *) &client_addr,len);
-                        printf("Temps ecoule sans ack \n");
-                    }*/
-                    //memset(client_buffer, 0, sizeof(client_buffer));
-                    //i = i+1;
-                    seq = seq + 1;
-                    /*while (i< wnd && !feof(fp))
-                    {
+                    while (1){
+                        FD_SET(utils_socket,&set);
+                        t.tv_sec= 1;
+                        t.tv_usec =0;
                         
-                    }
+                        s = select(utils_socket+1, &set, NULL, NULL, &t);
+                        
+                        if(FD_ISSET(utils_socket,&set)){
+                            client_msg_size = recvfrom(utils_socket, client_buffer, read+6, MSG_WAITALL, (struct sockaddr *) &client_addr, &len);
+                            client_buffer[client_msg_size] = '\0';
+                            printf("Client : %s\n", client_buffer);
+                            seq = seq + 1;
+                            break;
 
-                    printf("fenetre \n");*/
+                        }else{
+                            printf("Temps ecoule sans ack \n");
+                            sent = sendto(utils_socket,(char *) client_buffer,read+6,MSG_CONFIRM,(struct sockaddr *) &client_addr,len);
+                            printf("Sever resend %d \n", sent);
+                        }
+                    }
                     
 
-                    /*if(strcmp(client_buffer, ) == 0){
-                        seq = seq + 1;
-
-                    }*/
 
 
                     
                 }
                 //printf("FIN \n");
-                sent = sendto(server_sfd,(char *) synack,strlen(synack),MSG_CONFIRM,(struct sockaddr *) &client_addr,len);
-                
-
+                //memset(client_buffer,0,sizeof(client_buffer));
+                //memcpy(client_buffer, "FIN", 3);
+                char fin[3] = "FIN";
+                sent = sendto(utils_socket,(char *) fin,strlen(fin),MSG_CONFIRM,(struct sockaddr *) &client_addr,len);
+                if(sent <0){
+                    perror("error send de fin");
+                }
+                printf("Sever send %d \n", sent);
             }
+            
+            
 
-            exit(0);
+            //exit(0);
+
+
             
         }else{
             close(utils_socket);
