@@ -16,4 +16,4 @@ serveur3.o : serveur3-abdelBella.c
 	gcc -c serveur3-abdelBella.c -o serveur3.o
 
 clean: 
-	rm -rf *.o *.~ ../bin/serveur1-abdelBella ../bin/serveur2-abdelBella ../bin/serveur3-abdelBella
+	rm -rf *.o *.~ 
