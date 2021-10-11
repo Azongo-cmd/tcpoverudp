@@ -24,7 +24,7 @@ int main(int argc , char *argv[]){
     int utils_client_port = 2000;
     char client_port[4];
     char ack[RCVSIZE] = "ACK";
-    char synack[RCVSIZE] = "SYNACK";
+    char synack[RCVSIZE] = "SYN-ACK";
     int msg_size;
     int len = sizeof(client_addr);
     int bind_server;
