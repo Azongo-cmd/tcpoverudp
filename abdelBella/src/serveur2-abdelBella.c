@@ -131,17 +131,24 @@ int main(int argc , char *argv[]){
 
         if(fork_val == 0){
             close(server_sfd);
+            int WND = 5;
             FILE *fp;
             fd_set set;
+            struct timeval t0;
             struct timeval t;
-            int wnd = 10;
+            int wnd = 0;
             int read;
+            char packets[WND][RCVSIZE];
             
-            char non_ack[RCVSIZE];
+            int last_ack = 0;
 
             FD_ZERO(&set);
-            int s;
+            int packet_select;
+            int wnd_select;
             int sent;
+
+            t0.tv_sec =0;
+            t0.tv_usec=0;
 
 
 
@@ -158,37 +165,107 @@ int main(int argc , char *argv[]){
                     exit(-1);
                 }
                 int seq = 1;
-                while(!feof(fp))
-                {
-                    //int i = 0;
-                    sprintf(client_buffer, "%06d", seq);
-                    read = fread(buffer,1, RCVSIZE-6,fp);
-                    printf("READ: %d\n", read);
-                    memcpy(client_buffer+6, buffer,read);
-                    sent = sendto(utils_socket,(char *) client_buffer,read+6,MSG_CONFIRM,(struct sockaddr *) &client_addr,len);
-                    printf("Sever send %d \n", sent);
-                    if(sent < 0){
-                        perror("Sent Error");
-                    }     
-                    while (1){
-                        FD_SET(utils_socket,&set);
-                        t.tv_sec= 1;
-                        t.tv_usec =0;
-                        
-                        s = select(utils_socket+1, &set, NULL, NULL, &t);
+                while(!feof(fp)){
+                    printf("Window %d \n", wnd);
+                    FD_SET(utils_socket,&set);
+                    t.tv_sec= 1;
+                    t.tv_usec =0;
+                    printf("Last ack %d \n", last_ack);
+                    if(wnd < WND){
+                        sprintf(client_buffer, "%06d", seq);
+                        read = fread(buffer,1, RCVSIZE-6,fp);
+                        printf("READ: %d\n", read);
+                        memcpy(client_buffer+6, buffer,read);
+                        memcpy(packets[(seq-1)%WND],client_buffer,RCVSIZE);
+                        sent = sendto(utils_socket,(char *) client_buffer,read+6,MSG_CONFIRM,(struct sockaddr *) &client_addr,len);
+                        printf("Sever send seq %d \n", seq);
+                        wnd = wnd +1;
+                        seq = seq +1;
+                        printf("Sever send %d \n", sent);
+                        if(sent < 0){
+                            perror("Sent Error");
+                        }     
+                    
+                        wnd_select = select(utils_socket+1, &set, NULL, NULL, &t0);
                         
                         if(FD_ISSET(utils_socket,&set)){
                             client_msg_size = recvfrom(utils_socket, client_buffer, read+6, MSG_WAITALL, (struct sockaddr *) &client_addr, &len);
                             client_buffer[client_msg_size] = '\0';
-                            printf("Client : %s\n", client_buffer);
-                            seq = seq + 1;
-                            break;
+                            char ack[6];
+                            memcpy(ack, client_buffer+3,6);
+                            ack[6] = '\0';
+                            int diff_ack = atoi(ack) - last_ack;
+                            printf("current ack %d \n",atoi(ack));
+                            printf("current ack seq %s \n",ack);
+                            printf("Diff ack %d \n", diff_ack);
 
+                            if(diff_ack == 0){
+                                printf("Retransmission \n");
+                                wnd = wnd -1;
+                                sent = sendto(utils_socket,(char *) packets[last_ack %5],sizeof(packets[last_ack%5]),MSG_CONFIRM,(struct sockaddr *) &client_addr,len);
+                                wnd = wnd +1;
+                                char r_seq[6];
+                                memcpy(r_seq,packets[last_ack %5],6);
+                                r_seq[6] = '\0';
+                                printf("Sever resend %d \n", sent);
+                                printf("Sever resend %s \n", r_seq);
+                            }else{
+                                if(diff_ack >0){
+
+                                    wnd = wnd - diff_ack;
+                                    last_ack = atoi(ack);
+                                }
+                            }
+                            printf("Client : %s\n", client_buffer);
+
+                        }
+
+                    }else{
+                        printf("Fenetre \n");
+                        packet_select = select(utils_socket+1, &set, NULL, NULL, &t);
+                        printf("temps ecoule \n");
+                        if(FD_ISSET(utils_socket,&set)){
+                            client_msg_size = recvfrom(utils_socket, client_buffer, read+6, MSG_WAITALL, (struct sockaddr *) &client_addr, &len);
+                            client_buffer[client_msg_size] = '\0';
+                            char ack[6];
+                            memcpy(ack, client_buffer+3,6);
+                            ack[6] = '\0';
+                            int diff_ack = atoi(ack) - last_ack;
+                            printf("current ack %d \n",atoi(ack));
+                            printf("current ack seq %s \n",ack);
+                            printf("Diff ack %d \n", diff_ack);
+
+                            if(diff_ack == 0){
+                                printf("Retransmission \n");
+                                wnd = wnd -1;
+                                sent = sendto(utils_socket,(char *) packets[last_ack%5],sizeof(packets[last_ack%5]),MSG_CONFIRM,(struct sockaddr *) &client_addr,len);
+                                wnd = wnd +1;
+                                char r_seq[6];
+                                memcpy(r_seq,packets[last_ack %5],6);
+                                r_seq[6] = '\0';
+                                printf("Sever resend %d \n", sent);
+                                printf("Sever resend %s \n", r_seq);
+                            }else{
+                                if(diff_ack >0){
+
+                                    wnd = wnd - diff_ack;
+    
+                                    last_ack = atoi(ack);
+                                }else{
+                                    if(diff_ack > 5){
+
+                                    }
+                                }
+                            }
+                            printf("Client : %s\n", client_buffer);
                         }else{
-                            printf("Temps ecoule sans ack \n");
-                            sent = sendto(utils_socket,(char *) client_buffer,read+6,MSG_CONFIRM,(struct sockaddr *) &client_addr,len);
+                            printf("Temps ecoulé sans ack \n");
+                            printf("Retransmission \n");
+                            sent = sendto(utils_socket,(char *) packets[(last_ack +1)%5],sizeof(packets[(last_ack +1)%5]),MSG_CONFIRM,(struct sockaddr *) &client_addr,len);
+                            wnd = wnd +1;
                             printf("Sever resend %d \n", sent);
                         }
+
                     }
                     
 
