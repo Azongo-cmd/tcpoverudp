@@ -164,8 +164,8 @@ int main(int argc , char *argv[]){
                     }     
                     while (1){
                         FD_SET(utils_socket,&set);
-                        t.tv_sec= 1;
-                        t.tv_usec =0;
+                        t.tv_sec= 0;
+                        t.tv_usec =20000;
                         
                         s = select(utils_socket+1, &set, NULL, NULL, &t);
                         
