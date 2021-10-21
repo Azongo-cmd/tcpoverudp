@@ -37,8 +37,8 @@ int main(int argc , char *argv[]){
     int len = sizeof(client_addr);
     int bind_server;
     int bind_datasoc;
-    int wind;
     int timeout;
+    int wind;
 
     
 
@@ -55,7 +55,6 @@ int main(int argc , char *argv[]){
         port = atoi(argv[1]);	
         printf("Connexion port %d \n", port);
         wind = atoi(argv[2]);
-        printf("Taille de la fenetre %d \n", wind);
         timeout = atoi(argv[3]);
 
     }else{
