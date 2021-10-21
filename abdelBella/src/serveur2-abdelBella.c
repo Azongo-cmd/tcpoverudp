@@ -37,6 +37,8 @@ int main(int argc , char *argv[]){
     int len = sizeof(client_addr);
     int bind_server;
     int bind_datasoc;
+    int wind;
+    int timeout;
 
     
 
@@ -52,6 +54,10 @@ int main(int argc , char *argv[]){
     if(argc >=2){
         port = atoi(argv[1]);	
         printf("Connexion port %d \n", port);
+        wind = atoi(argv[2]);
+        printf("Taille de la fenetre %d \n", wind);
+        timeout = atoi(argv[3]);
+
     }else{
         printf("Pas de port specifie ! \n");
         return -1;
@@ -131,7 +137,7 @@ int main(int argc , char *argv[]){
 
         if(fork_val == 0){
             close(server_sfd);
-            int WND = 10;
+            int WND = wind;
             FILE *fp;
             fd_set set;
             struct timeval t0;
@@ -171,7 +177,7 @@ int main(int argc , char *argv[]){
                     printf("Window %d \n", wnd);
                     FD_SET(utils_socket,&set);
                     t.tv_sec= 0;
-                    t.tv_usec =15000;
+                    t.tv_usec =timeout;
                     printf("Last ack %d \n", last_ack);
                     if(wnd < WND){
                         sprintf(client_buffer, "%06d", seq);
@@ -284,7 +290,7 @@ int main(int argc , char *argv[]){
                 {
                     FD_SET(utils_socket,&set);
                     t.tv_sec= 0;
-                    t.tv_usec = 15000;
+                    t.tv_usec = timeout;
                     packet_select = select(utils_socket+1, &set, NULL, NULL, &t);
                     printf("last ack %d \n", last_ack);
                     printf("Sequence %d \n", seq );
