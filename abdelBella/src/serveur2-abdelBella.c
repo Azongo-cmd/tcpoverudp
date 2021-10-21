@@ -17,7 +17,7 @@
 #include <time.h>
 #include <sys/select.h>
 
-#define RCVSIZE 1024
+#define RCVSIZE 1494
 
 int main(int argc , char *argv[]){
     /*
